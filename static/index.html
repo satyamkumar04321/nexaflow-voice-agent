@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>NexaFlow Voice Agent — Sales & CRM Console</title>
+  <link rel="stylesheet" href="/static/styles.css" />
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <span class="brand-dot"></span>
+      <div>
+        <h1>NexaFlow Voice Agent</h1>
+        <p class="subtitle">Real-time STT/TTS, BANT Qualification, RAG & CRM Sync</p>
+      </div>
+    </div>
+
+    <nav class="tabs" role="tablist">
+      <button class="tab-btn active" data-tab="studio">Voice Studio</button>
+      <button class="tab-btn" data-tab="crm">CRM &amp; Calendar</button>
+      <button class="tab-btn" data-tab="insights">Insights &amp; KB</button>
+    </nav>
+
+    <div class="health-badge" id="healthBadge">Checking backend...</div>
+  </header>
+
+  <main class="container">
+    <!-- Tab 1: Voice Studio -->
+    <section id="tab-studio" class="tab-panel active">
+      <div class="studio-grid">
+        <!-- Left column: Session & Voice Controls -->
+        <aside class="card control-card">
+          <h2>Call Session</h2>
+          <div class="form-grid">
+            <label>
+              Prospect Name
+              <input id="prospectName" type="text" placeholder="e.g. Rohan Mehta" />
+            </label>
+            <label>
+              Work Email
+              <input id="prospectEmail" type="email" placeholder="rohan@fintech.in" />
+            </label>
+            <label>
+              Company
+              <input id="prospectCompany" type="text" placeholder="FinTech Labs" />
+            </label>
+            <label>
+              Language Mode
+              <select id="languageSelect">
+                <option value="auto">Auto Detect (EN / HI / ES)</option>
+                <option value="en-IN">English (India)</option>
+                <option value="en-US">English (US)</option>
+                <option value="hi-IN">Hindi / Hinglish</option>
+                <option value="es-ES">Spanish</option>
+              </select>
+            </label>
+          </div>
+
+          <div class="btn-row">
+            <button id="startCallBtn" class="btn primary">Start Call</button>
+            <button id="endCallBtn" class="btn danger" disabled>End &amp; Summarize</button>
+          </div>
+
+          <div class="voice-box">
+            <div class="voice-header">
+              <span class="status-pill" id="voiceStatus">Idle</span>
+              <label class="toggle">
+                <input type="checkbox" id="ttsToggle" checked />
+                <span>Auto TTS</span>
+              </label>
+            </div>
+
+            <canvas id="waveCanvas" width="280" height="54"></canvas>
+
+            <div class="btn-row">
+              <button id="micBtn" class="btn accent" disabled>Start Mic</button>
+              <button id="stopSpeakBtn" class="btn ghost" disabled>Stop TTS</button>
+            </div>
+            <p class="hint" id="sttSupportHint">Uses browser Web Speech STT/TTS + WebSocket turn channel.</p>
+          </div>
+
+          <div class="quick-prompts">
+            <h3>Demo Scenarios</h3>
+            <button class="chip" data-text="Hi, I'm Rohan from FinTech Labs. We have 40 sales reps and want to automate lead qualification and CRM follow-ups.">1. Discovery (EN)</button>
+            <button class="chip" data-text="Your Growth plan sounds expensive. Do you have any annual discount or free trial?">2. Pricing Objection</button>
+            <button class="chip" data-text="Namaste, kya aapka platform HubSpot CRM aur security compliance ke saath kaam karta hai?">3. Multilingual (HI)</button>
+            <button class="chip" data-text="Looks great. Please book a demo tomorrow at 3 pm using rohan@fintech.in.">4. Book Demo Slot</button>
+          </div>
+        </aside>
+
+        <!-- Center column: Live Transcript -->
+        <section class="card transcript-card">
+          <div class="card-head">
+            <h2>Live Conversation</h2>
+            <span class="meta-text" id="callMeta">No active call</span>
+          </div>
+
+          <div class="transcript-list" id="transcriptList">
+            <div class="empty-state">Click <strong>Start Call</strong> to begin a voice or text sales session.</div>
+          </div>
+
+          <div class="interim-bar" id="interimBar"></div>
+
+          <form class="chat-input-row" id="textTurnForm">
+            <input id="textInput" type="text" placeholder="Speak via Mic or type a prospect message..." disabled />
+            <button id="sendTurnBtn" type="submit" class="btn primary" disabled>Send</button>
+          </form>
+        </section>
+
+        <!-- Right column: BANT, Sentiment, RAG & Booking -->
+        <aside class="telemetry-col">
+          <div class="card">
+            <div class="card-head">
+              <h2>Lead Qualification (BANT)</h2>
+              <span class="tier-badge cold" id="tierBadge">Cold · 0</span>
+            </div>
+            <div class="progress-track">
+              <div class="progress-fill" id="scoreFill" style="width: 0%"></div>
+            </div>
+            <dl class="bant-list" id="bantList">
+              <div><dt>Need</dt><dd>—</dd></div>
+              <div><dt>Team Size</dt><dd>—</dd></div>
+              <div><dt>Budget</dt><dd>—</dd></div>
+              <div><dt>Authority</dt><dd>—</dd></div>
+              <div><dt>Timeline</dt><dd>—</dd></div>
+              <div><dt>Email</dt><dd>—</dd></div>
+            </dl>
+            <div id="objectionTags" class="tag-row"></div>
+          </div>
+
+          <div class="card">
+            <div class="card-head">
+              <h2>Sentiment &amp; RAG Evidence</h2>
+              <span class="meta-text" id="sentimentReadout">Neutral (0.0)</span>
+            </div>
+            <canvas id="sentimentCanvas" width="320" height="60"></canvas>
+            <div class="rag-list" id="ragList">
+              <p class="hint">Retrieved knowledge chunks will appear here during Q&amp;A.</p>
+            </div>
+          </div>
+
+          <div class="card" id="outcomeCard">
+            <h2>Appointment &amp; Call Summary</h2>
+            <div id="appointmentBox" class="hint">No demo booked in this call yet.</div>
+            <div id="summaryBox" class="summary-box hidden"></div>
+          </div>
+        </aside>
+      </div>
+    </section>
+
+    <!-- Tab 2: CRM & Calendar -->
+    <section id="tab-crm" class="tab-panel">
+      <div class="two-col">
+        <div class="card">
+          <div class="card-head">
+            <h2>CRM Leads Pipeline</h2>
+            <button id="refreshCrmBtn" class="btn ghost small">Refresh</button>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Prospect</th>
+                  <th>Company</th>
+                  <th>Score</th>
+                  <th>Stage</th>
+                  <th>Lang</th>
+                  <th>Need</th>
+                </tr>
+              </thead>
+              <tbody id="leadsTableBody"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-head">
+            <h2>Booked Demos &amp; Open Slots</h2>
+          </div>
+          <div id="appointmentsList" class="stack-list"></div>
+          <h3 class="mt">Open Calendar Slots</h3>
+          <div id="openSlotsChips" class="slot-grid"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Tab 3: Insights & KB -->
+    <section id="tab-insights" class="tab-panel">
+      <div class="kpi-grid" id="kpiGrid"></div>
+
+      <div class="two-col mt">
+        <div class="card">
+          <h2>Language &amp; Objection Analytics</h2>
+          <div id="breakdownBox" class="stack-list"></div>
+        </div>
+
+        <div class="card">
+          <div class="card-head">
+            <h2>Knowledge Base (RAG Index)</h2>
+            <span class="meta-text" id="kbCountMeta">0 chunks</span>
+          </div>
+          <form id="addKbForm" class="form-grid">
+            <label>
+              Document Filename
+              <input id="kbFilename" type="text" placeholder="custom_offer.md" required />
+            </label>
+            <label>
+              Markdown Content
+              <textarea id="kbContent" rows="4" placeholder="# Seasonal Offer&#10;## Startup Discount&#10;- 25% off Starter plan for seed-stage teams." required></textarea>
+            </label>
+            <button type="submit" class="btn primary">Index Document</button>
+          </form>
+          <div id="kbList" class="stack-list mt"></div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <script src="/static/app.js"></script>
+</body>
+</html>
